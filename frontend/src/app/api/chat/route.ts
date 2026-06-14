@@ -1,10 +1,16 @@
- import { NextRequest, NextResponse } from "next/server";
+ 
+import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 const MCP_URLS = {
-  library:   "http://localhost:3001",
-  cafeteria: "http://localhost:3002",
-  events:    "http://localhost:3003",
-  academics: "http://localhost:3004",
+  library:   process.env.LIBRARY_MCP_URL   || "http://localhost:3001",
+  cafeteria: process.env.CAFETERIA_MCP_URL || "http://localhost:3002",
+  events:    process.env.EVENTS_MCP_URL    || "http://localhost:3003",
+  academics: process.env.ACADEMICS_MCP_URL || "http://localhost:3004",
 };
 
 async function callMCP(server: string, path: string, body: object) {
@@ -21,53 +27,56 @@ async function callMCP(server: string, path: string, body: object) {
   }
 }
 
-function getMockResponse(text: string): string {
-  const t = text.toLowerCase();
-  if (t.includes("library") || t.includes("book"))
-    return "📚 The library has Clean Code, Design Patterns, and Computer Networks available right now. The Pragmatic Programmer and CLRS are checked out.";
-  if (t.includes("lunch") || t.includes("food") || t.includes("cafeteria") || t.includes("menu"))
-    return "🍽️ Today's lunch: Rajma Chawal (₹60), Chicken Biryani (₹90), Paneer Tikka Wrap (₹70). Lunch is served 12:00–2:30 PM.";
-  if (t.includes("event") || t.includes("workshop") || t.includes("fest"))
-    return "📅 Upcoming: TechFest AI Workshop (Jul 12), Drama Club Auditions (Jul 10), Inter-College Hackathon (Jul 20). All open for registration!";
-  if (t.includes("exam") || t.includes("attendance") || t.includes("course"))
-    return "🎓 Mid-semester exams are July 28 – August 1. Minimum 75% attendance required. Fee payment deadline is July 20.";
-  return "I can help you with library books, cafeteria menu, campus events, and academic info. What would you like to know?";
-}
-
 export async function POST(req: NextRequest) {
   const { messages } = await req.json();
   const lastMessage = messages[messages.length - 1].content.toLowerCase();
 
-  // Try to call the right MCP server based on the question
-  let mcpData = null;
-  let sources: string[] = [];
+  let contextData = "";
 
   if (lastMessage.includes("library") || lastMessage.includes("book")) {
-    mcpData = await callMCP("library", "/search", { query: "" });
-    if (mcpData) sources.push("library");
+    const data = await callMCP("library", "/search", { query: "" });
+    if (data) contextData += `Library data: ${JSON.stringify(data)}\n`;
   }
 
-  if (lastMessage.includes("food") || lastMessage.includes("menu") || 
-      lastMessage.includes("lunch") || lastMessage.includes("cafeteria") ||
-      lastMessage.includes("breakfast") || lastMessage.includes("dinner")) {
-    mcpData = await callMCP("cafeteria", "/menu", { meal: "all" });
-    if (mcpData) sources.push("cafeteria");
+  if (lastMessage.includes("food") || lastMessage.includes("menu") ||
+      lastMessage.includes("lunch") || lastMessage.includes("dinner") ||
+      lastMessage.includes("breakfast") || lastMessage.includes("cafeteria") ||
+      lastMessage.includes("canteen") || lastMessage.includes("eat")) {
+    const data = await callMCP("cafeteria", "/menu", { meal: "all" });
+    if (data) contextData += `Cafeteria data: ${JSON.stringify(data)}\n`;
   }
 
-  if (lastMessage.includes("event") || lastMessage.includes("workshop") || 
-      lastMessage.includes("fest") || lastMessage.includes("club")) {
-    mcpData = await callMCP("events", "/events", { category: "all" });
-    if (mcpData) sources.push("events");
+  if (lastMessage.includes("event") || lastMessage.includes("workshop") ||
+      lastMessage.includes("fest") || lastMessage.includes("club") ||
+      lastMessage.includes("cognizance") || lastMessage.includes("thomso")) {
+    const data = await callMCP("events", "/events", { category: "all" });
+    if (data) contextData += `Events data: ${JSON.stringify(data)}\n`;
   }
 
-  if (lastMessage.includes("exam") || lastMessage.includes("course") || 
-      lastMessage.includes("attendance") || lastMessage.includes("academic")) {
-    mcpData = await callMCP("academics", "/search", { query: "" });
-    if (mcpData) sources.push("academics");
+  if (lastMessage.includes("exam") || lastMessage.includes("course") ||
+      lastMessage.includes("attendance") || lastMessage.includes("timetable") ||
+      lastMessage.includes("class") || lastMessage.includes("professor")) {
+    const data = await callMCP("academics", "/search", { query: "" });
+    if (data) contextData += `Academics data: ${JSON.stringify(data)}\n`;
   }
 
-  // Generate reply
-  const reply = getMockResponse(messages[messages.length - 1].content);
+  const systemPrompt = `You are CampusAI, a helpful assistant for IIT Roorkee students. 
+You help students with information about the campus library, canteen menu, events, and academics.
 
-  return NextResponse.json({ reply, sources });
+${contextData ? `Here is the current campus data:\n${contextData}` : ""}
+
+IIT Roorkee has 21 bhawan canteens. All serve vegetarian food. 
+Key events: Cognizance (tech fest), Thomso (cultural fest), E-Summit, COMET.
+Answer questions in a friendly, helpful way. Keep responses concise and useful.`;
+
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 500,
+    system: systemPrompt,
+    messages: messages,
+  });
+
+  const reply = response.content[0].type === "text" ? response.content[0].text : "";
+
+  return NextResponse.json({ reply, sources: [] });
 }
