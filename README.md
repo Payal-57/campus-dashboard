@@ -1,3 +1,5 @@
+## 🌐 Live Demo
+https://campus-dashboard-phi.vercel.app
 # 🎓 CampusAI — IIT Roorkee Unified Campus Intelligence Dashboard
 
 A unified web dashboard for IIT Roorkee students to access all campus data from one place.
