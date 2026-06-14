@@ -70,7 +70,7 @@ Key events: Cognizance (tech fest), Thomso (cultural fest), E-Summit, COMET.
 Answer questions in a friendly, helpful way. Keep responses concise and useful.`;
 
   const response = await client.messages.create({
-model: "claude-sonnet-4-6",
+model: "claude-sonnet-4-6-20251001",
     max_tokens: 500,
     system: systemPrompt,
     messages: messages,
