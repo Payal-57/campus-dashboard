@@ -69,14 +69,16 @@ IIT Roorkee has 21 bhawan canteens. All serve vegetarian food.
 Key events: Cognizance (tech fest), Thomso (cultural fest), E-Summit, COMET.
 Answer questions in a friendly, helpful way. Keep responses concise and useful.`;
 
+try {
   const response = await client.messages.create({
-model: "claude-sonnet-4-6-20251001",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 500,
     system: systemPrompt,
     messages: messages,
   });
-
   const reply = response.content[0].type === "text" ? response.content[0].text : "";
-
   return NextResponse.json({ reply, sources: [] });
+} catch (error) {
+  console.error("Claude API error:", error);
+  return NextResponse.json({ reply: "I'm having trouble connecting right now. Please try again!", sources: [] });
 }
