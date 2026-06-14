@@ -13,7 +13,7 @@ const MCP_URLS = {
   academics: process.env.ACADEMICS_MCP_URL || "http://localhost:3004",
 };
 
-async function callMCP(server: string, path: string, body: object) {
+async function callMCP(server: string, path: string, body: Record<string, unknown>) {
   try {
     const res = await fetch(`${MCP_URLS[server as keyof typeof MCP_URLS]}${path}`, {
       method: "POST",
@@ -70,7 +70,7 @@ Key events: Cognizance (tech fest), Thomso (cultural fest), E-Summit, COMET.
 Answer questions in a friendly, helpful way. Keep responses concise and useful.`;
 
   const response = await client.messages.create({
-  model: "claude-haiku-4-5",
+ model: "claude-haiku-4-5-20251001",
     max_tokens: 500,
     system: systemPrompt,
     messages: messages,
