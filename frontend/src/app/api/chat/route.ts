@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   });
 
   const data = await response.json();
-  const reply = data.content?.[0]?.text ?? "Sorry, try again!";
+ const text = data?.content?.[0]?.text;
+const reply = text || data?.error?.message || "Could not get response";
   return NextResponse.json({ reply, sources: [] });
 }
